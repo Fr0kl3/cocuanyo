@@ -10,7 +10,7 @@
 	</script>
     <style>
         body { margin: 0; background: #2c3e50; overflow: hidden; font-family: 'Courier New', Courier, monospace; touch-action: none; }
-        canvas { display: block; background: #dcdde1; margin: 0 auto; }
+        canvas { display: block; background: #e8e8e8; margin: 0 auto; }
         #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; z-index: 10; color: #2f3640; font-weight: bold; font-size: 18px; }
     </style>
 </head>
@@ -56,6 +56,16 @@
         window.addEventListener('touchmove', (e) => { player.targetX = e.touches[0].clientX; });
         window.addEventListener('mousedown', (e) => { player.targetX = e.clientX; });
 
+        // Generar posiciones aleatorias para programadores (solo 8-10 programadores)
+        const programmers = [];
+        const numProgrammers = 8 + Math.floor(Math.random() * 3); // 8-10 programadores
+        for (let i = 0; i < numProgrammers; i++) {
+            programmers.push({
+                x: 30 + Math.random() * (canvas.width - 80),
+                y: 60 + Math.random() * (canvas.height - 250)
+            });
+        }
+
         function drawOffice() {
             // Dibujar cuadrícula de oficina (suelo)
             ctx.strokeStyle = "#bdc3c7";
@@ -67,15 +77,14 @@
                 ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(canvas.width, j); ctx.stroke();
             }
 
-            // Dibujar puestos de trabajo estáticos (Gente sentada)
+            // Dibujar puestos de trabajo en posiciones aleatorias
             ctx.font = "30px Arial";
-            for(let x=40; x<canvas.width; x+=100) {
-                for(let y=60; y<canvas.height - 150; y+=120) {
-                    ctx.fillText("👨‍💻", x, y); // El compañero de oficina
-                    ctx.fillStyle = "#7f8c8d";
-                    ctx.fillRect(x-5, y+5, 40, 10); // La mesa
-                }
-            }
+            programmers.forEach(p => {
+                ctx.fillStyle = "#000000";
+                ctx.fillText("👨‍💻", p.x, p.y); // El compañero de oficina
+                ctx.fillStyle = "#7f8c8d";
+                ctx.fillRect(p.x - 5, p.y + 5, 40, 10); // La mesa
+            });
         }
 
         function update() {
@@ -85,12 +94,12 @@
             let dx = player.targetX - (player.x + player.size/2);
             player.x += dx * 0.2;
 
-            // Generar Sobres (Emails)
-            if (Math.random() < 0.04) {
+            // Generar Sobres (Emails) - menos frecuentes y más lentos
+            if (Math.random() < 0.015) {
                 projectiles.push({
                     x: Math.random() * (canvas.width - 30),
                     y: -20,
-                    speed: 4 + (score / 500),
+                    speed: 2 + (score / 1000),
                     char: "✉️"
                 });
             }
