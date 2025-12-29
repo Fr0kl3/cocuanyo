@@ -4,23 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cocuanyo Office</title>
-    <style>
-        body { margin: 0; background: #2c3e50; color: white; font-family: sans-serif; overflow: hidden; touch-action: none; }
-        canvas { display: block; background: #ecf0f1; margin: 0 auto; }
-        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; text-shadow: 1px 1px 2px black; }
-        .heart { color: #e74c3c; font-size: 20px; }
-    </style>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script>
-    
-    window.Telegram.WebApp.ready();
+    <script src="https://telegram.org/js/telegram-web-app.js">
+	window.Telegram.WebApp.ready();
     window.Telegram.WebApp.expand();
-</script>
+	</script>
+    <style>
+        body { margin: 0; background: #2c3e50; overflow: hidden; font-family: 'Courier New', Courier, monospace; touch-action: none; }
+        canvas { display: block; background: #dcdde1; margin: 0 auto; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; z-index: 10; color: #2f3640; font-weight: bold; font-size: 18px; }
+    </style>
 </head>
 <body>
     <div id="ui">
-        <div>Vidas: <span id="lives">❤️❤️❤️❤️❤️</span></div>
-        <div>Puntos: <span id="score">0</span></div>
+        <div>SALUD: <span id="lives">❤️❤️❤️❤️❤️</span></div>
+        <div>STRESS: <span id="score">0</span></div>
     </div>
     <canvas id="gameCanvas"></canvas>
 
@@ -30,140 +27,130 @@
         const scoreEl = document.getElementById('score');
         const livesEl = document.getElementById('lives');
 
-        // Configuración de pantalla
+        // Inicializar Telegram
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Variables de juego
         let score = 0;
         let lives = 5;
         let gameActive = true;
-        let speedMultiplier = 1;
 
         const player = {
-            x: canvas.width / 2 - 25,
-            y: canvas.height - 80,
-            w: 50,
-            h: 50,
-            speed: 7,
-            dir: 0
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            size: 60,
+            speed: 8,
+            targetX: canvas.width / 2
         };
 
-        const projectiles = [];
-        const beers = [];
+        const projectiles = []; // Sobres ✉️
+        const beers = [];       // Cervezas 🍺
 
-        // Controles táctiles
-        window.addEventListener('touchstart', (e) => {
-            const touchX = e.touches[0].clientX;
-            player.dir = touchX < canvas.width / 2 ? -1 : 1;
-        });
-        window.addEventListener('touchend', () => player.dir = 0);
+        // Control táctil: Cocuanyo sigue al dedo/click
+        window.addEventListener('touchstart', (e) => { player.targetX = e.touches[0].clientX; });
+        window.addEventListener('touchmove', (e) => { player.targetX = e.touches[0].clientX; });
+        window.addEventListener('mousedown', (e) => { player.targetX = e.clientX; });
 
-        function spawnObjects() {
-            if (!gameActive) return;
-            
-            // Aparecen enemigos (emails/papeles)
-            if (Math.random() < 0.03 * speedMultiplier) {
-                projectiles.push({
-                    x: Math.random() * (canvas.width - 30),
-                    y: -30,
-                    w: 30,
-                    h: 20,
-                    speed: (3 + Math.random() * 3) * speedMultiplier,
-                    type: 'paper'
-                });
+        function drawOffice() {
+            // Dibujar cuadrícula de oficina (suelo)
+            ctx.strokeStyle = "#bdc3c7";
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=50) {
+                ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for(let j=0; j<canvas.height; j+=50) {
+                ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(canvas.width, j); ctx.stroke();
             }
 
-            // Aparece cerveza (curación)
-            if (Math.random() < 0.005) {
-                beers.push({
-                    x: Math.random() * (canvas.width - 30),
-                    y: -30,
-                    w: 25,
-                    h: 35,
-                    speed: 2
-                });
+            // Dibujar puestos de trabajo estáticos (Gente sentada)
+            ctx.font = "30px Arial";
+            for(let x=40; x<canvas.width; x+=100) {
+                for(let y=60; y<canvas.height - 150; y+=120) {
+                    ctx.fillText("👨‍💻", x, y); // El compañero de oficina
+                    ctx.fillStyle = "#7f8c8d";
+                    ctx.fillRect(x-5, y+5, 40, 10); // La mesa
+                }
             }
         }
 
         function update() {
             if (!gameActive) return;
 
-            // Mover jugador
-            player.x += player.dir * player.speed;
-            if (player.x < 0) player.x = 0;
-            if (player.x > canvas.width - player.w) player.x = canvas.width - player.w;
+            // Movimiento suave hacia el objetivo
+            let dx = player.targetX - (player.x + player.size/2);
+            player.x += dx * 0.2;
 
-            // Mover proyectiles
+            // Generar Sobres (Emails)
+            if (Math.random() < 0.04) {
+                projectiles.push({
+                    x: Math.random() * (canvas.width - 30),
+                    y: -20,
+                    speed: 4 + (score / 500),
+                    char: "✉️"
+                });
+            }
+
+            // Generar Cervezas
+            if (Math.random() < 0.008) {
+                beers.push({
+                    x: Math.random() * (canvas.width - 30),
+                    y: -20,
+                    speed: 3,
+                    char: "🍺"
+                });
+            }
+
+            // Actualizar Sobres
             projectiles.forEach((p, i) => {
                 p.y += p.speed;
-                // Colisión con Cocuanyo
-                if (p.x < player.x + player.w && p.x + p.w > player.x && p.y < player.y + player.h && p.y + p.h > player.y) {
+                if (p.y > player.y && p.y < player.y + player.size && p.x > player.x && p.x < player.x + player.size) {
                     lives--;
                     projectiles.splice(i, 1);
                     updateUI();
                     if (lives <= 0) gameOver();
                 }
-                // Salir de pantalla
                 if (p.y > canvas.height) {
                     projectiles.splice(i, 1);
                     score += 10;
-                    speedMultiplier += 0.005;
                     updateUI();
                 }
             });
 
-            // Mover cervezas
+            // Actualizar Cervezas
             beers.forEach((b, i) => {
                 b.y += b.speed;
-                if (b.x < player.x + player.w && b.x + b.w > player.x && b.y < player.y + player.h && b.y + b.h > player.y) {
+                if (b.y > player.y && b.y < player.y + player.size && b.x > player.x && b.x < player.x + player.size) {
                     if (lives < 5) lives++;
                     beers.splice(i, 1);
                     updateUI();
                 }
                 if (b.y > canvas.height) beers.splice(i, 1);
             });
-
-            spawnObjects();
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawOffice();
 
-            // Suelo de oficina
-            ctx.fillStyle = "#bdc3c7";
-            ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+            // Dibujar a Cocuanyo (El Gorila con traje)
+            ctx.font = "60px Arial";
+            ctx.fillText("🦍", player.x, player.y + 50);
+            ctx.font = "15px Arial";
+            ctx.fillStyle = "blue";
+            //ctx.fillText("👔", player.x + 20, player.y + 65); // Efecto de corbata/traje
 
-            // Dibujar a Cocuanyo (Gorila con traje)
-            ctx.fillStyle = "#34495e"; // Traje
-            ctx.fillRect(player.x, player.y, player.w, player.h);
-            ctx.fillStyle = "#5d4037"; // Piel
-            ctx.fillRect(player.x + 10, player.y + 5, 30, 20);
-            ctx.fillStyle = "white"; // Camisa
-            ctx.fillRect(player.x + 20, player.y + 25, 10, 10);
-
-            // Dibujar Proyectiles (Emails)
-            ctx.fillStyle = "white";
-            projectiles.forEach(p => {
-                ctx.fillRect(p.x, p.y, p.w, p.h);
-                ctx.strokeStyle = "#7f8c8d";
-                ctx.strokeRect(p.x, p.y, p.w, p.h);
-            });
-
-            // Dibujar Cervezas
-            ctx.fillStyle = "#f1c40f";
-            beers.forEach(b => {
-                ctx.fillRect(b.x, b.y, b.w, b.h);
-                ctx.fillStyle = "white";
-                ctx.fillRect(b.x, b.y, b.w, 10); // Espuma
-                ctx.fillStyle = "#f1c40f";
-            });
+            // Dibujar Proyectiles
+            ctx.font = "30px Arial";
+            projectiles.forEach(p => ctx.fillText(p.char, p.x, p.y));
+            beers.forEach(b => ctx.fillText(b.char, b.x, b.y));
 
             if (gameActive) {
-                requestAnimationFrame(() => {
-                    update();
-                    draw();
-                });
+                requestAnimationFrame(() => { update(); draw(); });
             }
         }
 
@@ -174,7 +161,7 @@
 
         function gameOver() {
             gameActive = false;
-            alert("¡DEMASIADOS EMAILS! Cocuanyo se ha estresado.\nPuntuación: " + score);
+            alert("GAME OVER\nCocuanyo ha sido enterrado en burocracia.\nScore: " + score);
             location.reload();
         }
 
@@ -182,4 +169,5 @@
     </script>
 </body>
 </html>
+
 
