@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cocuanyo Office</title>
+    <style>
+        body { margin: 0; background: #2c3e50; color: white; font-family: sans-serif; overflow: hidden; touch-action: none; }
+        canvas { display: block; background: #ecf0f1; margin: 0 auto; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; text-shadow: 1px 1px 2px black; }
+        .heart { color: #e74c3c; font-size: 20px; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div>Vidas: <span id="lives">❤️❤️❤️❤️❤️</span></div>
+        <div>Puntos: <span id="score">0</span></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+
+        // Configuración de pantalla
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Variables de juego
+        let score = 0;
+        let lives = 5;
+        let gameActive = true;
+        let speedMultiplier = 1;
+
+        const player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 80,
+            w: 50,
+            h: 50,
+            speed: 7,
+            dir: 0
+        };
+
+        const projectiles = [];
+        const beers = [];
+
+        // Controles táctiles
+        window.addEventListener('touchstart', (e) => {
+            const touchX = e.touches[0].clientX;
+            player.dir = touchX < canvas.width / 2 ? -1 : 1;
+        });
+        window.addEventListener('touchend', () => player.dir = 0);
+
+        function spawnObjects() {
+            if (!gameActive) return;
+            
+            // Aparecen enemigos (emails/papeles)
+            if (Math.random() < 0.03 * speedMultiplier) {
+                projectiles.push({
+                    x: Math.random() * (canvas.width - 30),
+                    y: -30,
+                    w: 30,
+                    h: 20,
+                    speed: (3 + Math.random() * 3) * speedMultiplier,
+                    type: 'paper'
+                });
+            }
+
+            // Aparece cerveza (curación)
+            if (Math.random() < 0.005) {
+                beers.push({
+                    x: Math.random() * (canvas.width - 30),
+                    y: -30,
+                    w: 25,
+                    h: 35,
+                    speed: 2
+                });
+            }
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            // Mover jugador
+            player.x += player.dir * player.speed;
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.w) player.x = canvas.width - player.w;
+
+            // Mover proyectiles
+            projectiles.forEach((p, i) => {
+                p.y += p.speed;
+                // Colisión con Cocuanyo
+                if (p.x < player.x + player.w && p.x + p.w > player.x && p.y < player.y + player.h && p.y + p.h > player.y) {
+                    lives--;
+                    projectiles.splice(i, 1);
+                    updateUI();
+                    if (lives <= 0) gameOver();
+                }
+                // Salir de pantalla
+                if (p.y > canvas.height) {
+                    projectiles.splice(i, 1);
+                    score += 10;
+                    speedMultiplier += 0.005;
+                    updateUI();
+                }
+            });
+
+            // Mover cervezas
+            beers.forEach((b, i) => {
+                b.y += b.speed;
+                if (b.x < player.x + player.w && b.x + b.w > player.x && b.y < player.y + player.h && b.y + b.h > player.y) {
+                    if (lives < 5) lives++;
+                    beers.splice(i, 1);
+                    updateUI();
+                }
+                if (b.y > canvas.height) beers.splice(i, 1);
+            });
+
+            spawnObjects();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Suelo de oficina
+            ctx.fillStyle = "#bdc3c7";
+            ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+
+            // Dibujar a Cocuanyo (Gorila con traje)
+            ctx.fillStyle = "#34495e"; // Traje
+            ctx.fillRect(player.x, player.y, player.w, player.h);
+            ctx.fillStyle = "#5d4037"; // Piel
+            ctx.fillRect(player.x + 10, player.y + 5, 30, 20);
+            ctx.fillStyle = "white"; // Camisa
+            ctx.fillRect(player.x + 20, player.y + 25, 10, 10);
+
+            // Dibujar Proyectiles (Emails)
+            ctx.fillStyle = "white";
+            projectiles.forEach(p => {
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+                ctx.strokeStyle = "#7f8c8d";
+                ctx.strokeRect(p.x, p.y, p.w, p.h);
+            });
+
+            // Dibujar Cervezas
+            ctx.fillStyle = "#f1c40f";
+            beers.forEach(b => {
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.fillStyle = "white";
+                ctx.fillRect(b.x, b.y, b.w, 10); // Espuma
+                ctx.fillStyle = "#f1c40f";
+            });
+
+            if (gameActive) {
+                requestAnimationFrame(() => {
+                    update();
+                    draw();
+                });
+            }
+        }
+
+        function updateUI() {
+            scoreEl.innerText = score;
+            livesEl.innerText = "❤️".repeat(lives);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            alert("¡DEMASIADOS EMAILS! Cocuanyo se ha estresado.\nPuntuación: " + score);
+            location.reload();
+        }
+
+        draw();
+    </script>
+</body>
+</html>
